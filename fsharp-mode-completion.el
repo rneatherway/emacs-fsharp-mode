@@ -40,15 +40,14 @@
 
 ;;; User-configurable variables
 
-(defvar fsharp-ac-executable "fsautocomplete.exe")
+(defvar fsharp-ac-executable
+  (concat (file-name-directory (or load-file-name buffer-file-name))
+          "bin/fsautocomplete.exe"))
 
 (defvar fsharp-ac-complete-command
-  (let ((exe (or (executable-find fsharp-ac-executable)
-                 (concat (file-name-directory (or load-file-name buffer-file-name))
-                         "bin/" fsharp-ac-executable))))
-    (if fsharp-ac-using-mono
-        (list "mono" exe)
-      (list exe))))
+  (if fsharp-ac-using-mono
+      (list "mono" exe)
+    (list exe)))
 
 (defvar fsharp-ac-use-popup t
   "Display tooltips using a popup at point.
@@ -87,6 +86,7 @@ If set to nil, display in a help buffer instead.")
 (defvar fsharp-ac-last-parsed-ticks 0
   "BUFFER's tick counter, when the file was parsed.")
 
+(defconst fsharp-ac--fsac-version "0.14.0")
 (defconst fsharp-ac--log-buf "*fsharp-debug*")
 (defconst fsharp-ac--completion-procname "fsharp-complete")
 (defconst fsharp-ac--completion-bufname
@@ -265,10 +265,21 @@ For indirect buffers return the truename of the base buffer."
           (buffer-list))
     (fsharp-ac--reset)))
 
+(defun fsharp-ac--fetch-fsac ()
+  (unless (f-exists? (file-name-directory fsharp-ac-executable))
+    (mkdir (file-name-directory fsharp-ac-executable)))
+  (url-copy-file
+   (concat "https://github.com/fsharp/FSharp.AutoComplete/releases/download/"
+           fsharp-ac--fsac-version
+           "/fsautocomplete.zip")
+   (concat (file-name-directory fsharp-ac-executable) "/fsautocomplete.zip"))
+  (;; Unzip the archive
+   (archive-zip-extract (concat (file-name-directory fsharp-ac-executable) "/fsautocomplete.zip")
+                        (file-name-directory fsharp-ac-executable))))
+
 (defun fsharp-ac--configure-proc ()
-  (let ((fsac (car (last fsharp-ac-complete-command))))
-    (unless (file-exists-p fsac)
-      (error "%s not found" fsac)))
+  (unless (file-exists-p fsharp-ac-executable)
+    (error "%s not found" fsharp-ac-executable))
   (let ((proc (let (process-connection-type)
                 (apply 'start-process
                        fsharp-ac--completion-procname
