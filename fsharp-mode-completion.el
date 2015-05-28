@@ -84,6 +84,7 @@ If set to nil, display in a help buffer instead.")
 (defvar fsharp-ac-verbose nil)
 (defvar fsharp-ac-current-candidate nil)
 (defvar fsharp-ac-current-helptext (make-hash-table :test 'equal))
+(defvar fsharp-ac--current-symbol (make-hash-table :test 'equal))
 (defvar fsharp-ac-last-parsed-ticks 0
   "BUFFER's tick counter, when the file was parsed.")
 
@@ -207,6 +208,7 @@ For indirect buffers return the truename of the base buffer."
         fsharp-ac-completion-process nil
         fsharp-ac-current-candidate nil)
   (-each (list fsharp-ac-current-helptext
+               fsharp-ac--current-symbol
                fsharp-ac--project-data
                fsharp-ac--project-files) 'clrhash)
   (fsharp-ac-clear-errors))
@@ -303,9 +305,15 @@ For indirect buffers return the truename of the base buffer."
     (prefix . fsharp-ac--residue)
     (requires . 0)
     (document . fsharp-ac-document)
+    (summary . fsharp-ac--symbol)
     ;(action . fsharp-ac-action)
     (cache) ; this prevents multiple re-calls, critical
     ))
+
+(defun fsharp-ac--symbol (item)
+  (let* ((ticks (s-match "^``\\(.*\\)``$" item))
+         (key (if ticks (cadr ticks) item)))
+    (gethash key fsharp-ac--current-symbol)))
 
 (defun fsharp-ac-document (item)
   (let* ((ticks (s-match "^``\\(.*\\)``$" item))
@@ -319,7 +327,7 @@ For indirect buffers return the truename of the base buffer."
                (accept-process-output fsharp-ac-completion-process 0 100))
              (gethash key fsharp-ac-current-helptext
                       "Loading documentation..."))))
-      (pos-tip-fill-string help popup-tip-max-width))))
+      (pos-tip-fill-string (format "(%s) %s" (fsharp-ac--symbol item) help) popup-tip-max-width))))
 
 (defun fsharp-ac-candidate ()
   (interactive)
@@ -328,6 +336,7 @@ For indirect buffers return the truename of the base buffer."
      (setq fsharp-ac-status 'wait)
      (setq fsharp-ac-current-candidate nil)
      (clrhash fsharp-ac-current-helptext)
+     (clrhash fsharp-ac--current-symbol)
 
      (fsharp-ac-parse-current-buffer)
      (fsharp-ac-send-pos-request
@@ -705,6 +714,11 @@ around to the start of the buffer."
                     (s-append "``" (s-prepend "``" s)))))
               data)
         fsharp-ac-status 'acknowledged)
+  (-each data
+         (lambda (candidate)
+           (puthash (gethash "Name" candidate)
+                    (gethash "Glyph" candidate)
+                    fsharp-ac--current-symbol)))
   (fsharp-ac--ac-start :force-init t)
   (ac-update)
   (setq fsharp-ac-status 'idle))
