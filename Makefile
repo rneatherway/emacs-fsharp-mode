@@ -23,7 +23,14 @@ ac_name    = fsautocomplete
 ac_exe     = $(bin_d)/$(ac_name).exe
 ac_version = 0.18.0
 ac_archive = $(ac_name)-$(ac_version).zip
-ac_url     = https://github.com/fsharp/FSharp.AutoComplete/releases/download/$(ac_version)/$(ac_name).zip
+ac_url     = https://github.com/fsharp/FsAutoComplete/releases/download/$(ac_version)/$(ac_name).zip
+
+# Projekt binary distribution
+projekt_name = Projekt
+projekt_exe = $(bin_d)/$(projekt_name).exe
+projekt_version = 0.0.1
+projekt_archive = $(projekt_name)-$(projekt_version).zip
+projekt_url = https://github.com/fsprojects/Projekt/releases/download/$(projekt_version)/$(projekt_name).zip
 
 # Installation paths.
 dest_root = $(HOME)/.emacs.d/fsharp-mode/
@@ -36,16 +43,23 @@ dest_bin  = $(HOME)/.emacs.d/fsharp-mode/bin/
 # Building
 
 $(ac_archive):
-	curl -L "$(ac_url)" -o "$(bin_d)/$(ac_archive)"
+	curl -L "$(ac_url)" -o "$(ac_archive)"
 
 $(ac_exe) : $(bin_d) $(ac_archive)
-	unzip "$(bin_d)/$(ac_archive)" -d "$(bin_d)"
+	unzip "$(ac_archive)" -d "$(bin_d)"
 	touch "$(ac_exe)"
+
+$(projekt_archive):
+	curl -L "$(projekt_url)" -o "$(projekt_archive)"
+
+$(projekt_exe) : $(bin_d) $(projekt_archive)
+	unzip "$(projekt_archive)" -d "$(bin_d)"
+	touch "$(projekt_exe)"
 
 ~/.config/.mono/certs:
 	mozroots --import --sync --quiet
 
-install : $(ac_exe) $(dest_root) $(dest_bin)
+install : $(projekt_exe) $(ac_exe) $(dest_root) $(dest_bin)
 # Install elisp packages
 	$(emacs) $(load_files) --batch -f load-packages
 # Copy files
@@ -107,7 +121,7 @@ check-compile : packages $(obj_files)
 	  --eval '(setq byte-compile-error-on-warn t)' \
           -f batch-byte-compile $<
 
-run : $(ac_exe) packages
+run : $(ac_exe) $(projekt_exe) packages
 	HOME=$(tmp_d) ;\
 	$(emacs) $(load_files) -f configure-fsharp-tests
 
@@ -125,7 +139,7 @@ update-version:
 emacs-fsharp-mode-bin:
 	git clone git@github.com:/rneatherway/emacs-fsharp-mode-bin
 
-release: update-version emacs-fsharp-mode-bin $(ac_exe)
+release: update-version emacs-fsharp-mode-bin $(ac_exe) $(projekt_exe)
 	cp $(bin_d)/*.exe $(bin_d)/*.dll emacs-fsharp-mode-bin
 	cp $(src_files) emacs-fsharp-mode-bin
 	cd emacs-fsharp-mode-bin && git add --all
