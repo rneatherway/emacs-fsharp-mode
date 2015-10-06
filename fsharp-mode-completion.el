@@ -736,6 +736,13 @@ around to the start of the buffer."
         (setq fsharp-ac-errors errs)
         (mapc 'fsharp-ac/show-error-overlay errs)))))
 
+(defun fsharp-ac--format-tooltip (data)
+  "Format the tooltip appropriately"
+  ;; https://github.com/fsharp/FsAutoComplete/commit/6658ed0b116060a34e664e21d44269a329f72b0e
+  ;; If outer list length > 1, header is "Multiple items" and then between outermost list elements, insert "\n--------------------\n"
+  ;; Inner lists: if length > 1 and outer list length = 1 header is "Multiple overloads". if len > 10 truncate to 10 and footer is (+%d other overloads)
+  "nothing")
+
 (defun fsharp-ac-handle-tooltip (data)
   "Display information from the background process. If the user
 has requested a popup tooltip, display a popup. Otherwise,
@@ -743,13 +750,14 @@ display a short summary in the minibuffer."
   ;; Do not display if the current buffer is not an fsharp buffer.
   (when (eq major-mode 'fsharp-mode)
     (unless (or (active-minibuffer-window) cursor-in-echo-area)
-      (if fsharp-ac-awaiting-tooltip
-          (progn
-            (setq fsharp-ac-awaiting-tooltip nil)
-            (if fsharp-ac-use-popup
-                (fsharp-ac/show-popup data)
-              (fsharp-ac/show-info-window data)))
-        (fsharp-ac-message-safely (fsharp-doc/format-for-minibuffer data))))))
+      (let ((data (fsharp-ac--format-tooltip)))
+        (if fsharp-ac-awaiting-tooltip
+            (progn
+              (setq fsharp-ac-awaiting-tooltip nil)
+              (if fsharp-ac-use-popup
+                  (fsharp-ac/show-popup data)
+                (fsharp-ac/show-info-window data)))
+          (fsharp-ac-message-safely (fsharp-doc/format-for-minibuffer data)))))))
 
 (defun fsharp-ac/show-popup (str)
   (if (display-graphic-p)
