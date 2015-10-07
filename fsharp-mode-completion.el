@@ -736,12 +736,26 @@ around to the start of the buffer."
         (setq fsharp-ac-errors errs)
         (mapc 'fsharp-ac/show-error-overlay errs)))))
 
-(defun fsharp-ac--format-tooltip (data)
-  "Format the tooltip appropriately"
-  ;; https://github.com/fsharp/FsAutoComplete/commit/6658ed0b116060a34e664e21d44269a329f72b0e
-  ;; If outer list length > 1, header is "Multiple items" and then between outermost list elements, insert "\n--------------------\n"
-  ;; Inner lists: if length > 1 and outer list length = 1 header is "Multiple overloads". if len > 10 truncate to 10 and footer is (+%d other overloads)
-  "nothing")
+(defun fsharp-ac--format-tooltip-overload (overload)
+  "Format a single overload"
+  (let ((sig (gethash "Signature" overload))
+        (cmt (gethash "Comment" overload)))
+    (s-concat sig "\n" cmt (if (s-blank? cmt) "" "\n"))))
+
+(defun fsharp-ac--format-tooltip-overloads (single? overloads)
+  "Format a list of overloads"
+  (let ((header (if single? "Multiple overloads\n" ""))
+        (body (s-join "\n" (-map #'fsharp-ac--format-tooltip-overload (-take 10 overloads))))
+        (footer (if (> (length overloads) 10) (format "(+%d other overloads)" (length overloads)) "")))
+    (s-concat header body footer)))
+
+(defun fsharp-ac--format-tooltip (items)
+  "Format a list of items as a tooltip"
+  (let ((result (s-join "\n--------------------\n"
+                           (-map (lambda (i) (fsharp-ac--format-tooltip-overload (< (length items) 2) i)) items))))
+    (if (> (length items) 1)
+        (s-concat "Multiple items\n" result)
+      result)))
 
 (defun fsharp-ac-handle-tooltip (data)
   "Display information from the background process. If the user
