@@ -744,7 +744,7 @@ around to the start of the buffer."
 
 (defun fsharp-ac--format-tooltip-overloads (single? overloads)
   "Format a list of overloads"
-  (let ((header (if single? "Multiple overloads\n" ""))
+  (let ((header (if (and single? (> (length overloads) 1)) "Multiple overloads\n" ""))
         (body (s-join "\n" (-map #'fsharp-ac--format-tooltip-overload (-take 10 overloads))))
         (footer (if (> (length overloads) 10) (format "(+%d other overloads)" (length overloads)) "")))
     (s-concat header body footer)))
@@ -752,10 +752,10 @@ around to the start of the buffer."
 (defun fsharp-ac--format-tooltip (items)
   "Format a list of items as a tooltip"
   (let ((result (s-join "\n--------------------\n"
-                           (-map (lambda (i) (fsharp-ac--format-tooltip-overload (< (length items) 2) i)) items))))
+                           (-map (lambda (i) (fsharp-ac--format-tooltip-overloads (< (length items) 2) i)) items))))
     (if (> (length items) 1)
-        (s-concat "Multiple items\n" result)
-      result)))
+        (s-concat "Multiple items" result)
+      (s-chomp result))))
 
 (defun fsharp-ac-handle-tooltip (data)
   "Display information from the background process. If the user
@@ -764,7 +764,7 @@ display a short summary in the minibuffer."
   ;; Do not display if the current buffer is not an fsharp buffer.
   (when (eq major-mode 'fsharp-mode)
     (unless (or (active-minibuffer-window) cursor-in-echo-area)
-      (let ((data (fsharp-ac--format-tooltip)))
+      (let ((data (fsharp-ac--format-tooltip data)))
         (if fsharp-ac-awaiting-tooltip
             (progn
               (setq fsharp-ac-awaiting-tooltip nil)
