@@ -433,13 +433,15 @@ The current buffer must be an F# file that exists on disk."
            (eq fsharp-ac-status 'idle)
            (not ac-completing))))))
 
-(defvar fsharp-ac-awaiting-tooltip nil)
-
 (defun fsharp-ac/show-tooltip-at-point ()
   "Display a tooltip for the F# symbol at POINT."
   (interactive)
-  (setq fsharp-ac-awaiting-tooltip t)
-  (fsharp-ac/show-typesig-at-point))
+  (when (fsharp-ac-can-make-request)
+    (fsharp-ac-parse-current-buffer)
+    (fsharp-ac-send-pos-request "tooltip"
+                                (fsharp-ac--buffer-truename)
+                                (line-number-at-pos)
+                                (+ 1 (current-column)))))
 
 (defun fsharp-ac/show-typesig-at-point (&optional quiet)
   "Display the type signature for the F# symbol at POINT. Pass
@@ -448,7 +450,7 @@ prevent usage errors being displayed by FSHARP-DOC-MODE."
   (interactive)
   (when (fsharp-ac-can-make-request quiet)
      (fsharp-ac-parse-current-buffer)
-     (fsharp-ac-send-pos-request "tooltip"
+     (fsharp-ac-send-pos-request "typesig"
                                  (fsharp-ac--buffer-truename)
                                  (line-number-at-pos)
                                  (+ 1 (current-column)))))
@@ -680,8 +682,8 @@ around to the start of the buffer."
       (goto-char (process-mark proc))
       ;; Remove BOM, if present
       (insert-before-markers (if (string-prefix-p "\ufeff" str)
-				 (substring str 1)
-			       str))))
+                                 (substring str 1)
+                               str))))
   (let ((msg (fsharp-ac--get-msg proc)))
     (while msg
       (let ((kind (gethash "Kind" msg))
@@ -697,6 +699,7 @@ around to the start of the buffer."
          ((s-equals? "errors" kind) (fsharp-ac-handle-errors data))
          ((s-equals? "project" kind) (fsharp-ac-handle-project data))
          ((s-equals? "tooltip" kind) (fsharp-ac-handle-tooltip data))
+         ((s-equals? "typesig" kind) (fsharp-ac--handle-typesig data))
          ((s-equals? "finddecl" kind) (fsharp-ac-visit-definition data))
          ((s-equals? "symboluse" kind) (fsharp-ac--handle-symboluse data))
        (t
@@ -765,13 +768,14 @@ display a short summary in the minibuffer."
   (when (eq major-mode 'fsharp-mode)
     (unless (or (active-minibuffer-window) cursor-in-echo-area)
       (let ((data (fsharp-ac--format-tooltip data)))
-        (if fsharp-ac-awaiting-tooltip
-            (progn
-              (setq fsharp-ac-awaiting-tooltip nil)
-              (if fsharp-ac-use-popup
-                  (fsharp-ac/show-popup data)
-                (fsharp-ac/show-info-window data)))
-          (fsharp-ac-message-safely (fsharp-doc/format-for-minibuffer data)))))))
+        (if fsharp-ac-use-popup
+            (fsharp-ac/show-popup data)
+          (fsharp-ac/show-info-window data))))))
+
+(defun fsharp-ac--handle-typesig (data)
+  (when (eq major-mode 'fsharp-mode)
+    (unless (or (active-minibuffer-window) cursor-in-echo-area)
+      (fsharp-ac-message-safely (fsharp-doc/format-for-minibuffer (fsharp-ac--format-tooltip data))))))
 
 (defun fsharp-ac/show-popup (str)
   (if (display-graphic-p)

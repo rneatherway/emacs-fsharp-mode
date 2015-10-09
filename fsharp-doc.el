@@ -67,7 +67,7 @@
   (unless fsharp-doc-timer
     (setq fsharp-doc-timer
           (run-with-idle-timer fsharp-doc-idle-delay t
-                               'fsharp-doc-show-tooltip))))
+                               'fsharp-doc-show-typesig))))
 
 (defun fsharp-doc-reset-timer ()
   (when fsharp-doc-timer
@@ -77,7 +77,7 @@
 ;;; ----------------------------------------------------------------------------
 
 (defun fsharp-doc/format-for-minibuffer (str)
-  "Parse the result from the F# process."
+  "Parse the result STR from the F# process."
   (destructuring-bind (x &rest xs) (split-string str "[\r\n]")
     (let ((line (if (string-match-p "^Multiple" x) (car-safe xs) x))
           (name (fsharp-doc-extract-full-name str)))
@@ -110,10 +110,10 @@
 
 (defvar fsharp-doc-prevpoint nil)
 
-(defun fsharp-doc-show-tooltip ()
-  "Show tooltip info in the minibuffer.
+(defun fsharp-doc-show-typesig ()
+  "Show type signature in the minibuffer.
 If there is an error or warning at point, show the error text.
-Otherwise, request a tooltip from the completion process."
+Otherwise, request the type signature from the completion process."
   (interactive)
   (when (and fsharp-doc-mode (thing-at-point 'symbol))
     (unless (or (equal (point) fsharp-doc-prevpoint)
