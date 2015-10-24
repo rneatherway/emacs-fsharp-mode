@@ -99,6 +99,22 @@ If set to nil, display in a help buffer instead.")
 (defconst fsharp-ac--completion-bufname
   (concat "*" fsharp-ac--completion-procname "*"))
 
+(defvar fsharp-ac--method-active-map
+  (let ((keymap (make-sparse-keymap)))
+    (define-key keymap "\e\e\e" 'fsharp-ac--method-abort)
+    (define-key keymap "\C-g" 'fsharp-ac--method-abort)
+    (define-key keymap (kbd "M-n") 'fsharp-ac--method-next-override)
+    (define-key keymap (kbd "M-p") 'fsharp-ac--method-prev-override)
+    (define-key keymap (kbd "<down>") 'fsharp-ac--method-next-override)
+    (define-key keymap (kbd "<up>") 'fsharp-ac--method-prev-override)
+    (define-key keymap (kbd "<right>") 'fsharp-ac--method-next-param)
+    (define-key keymap (kbd "<left>") 'fsharp-ac--method-prev-param)
+    keymap)
+  "Keymap that is enabled for method overload tooltip.")
+
+(defun fsharp-ac--method-abort ()
+  ())
+
 (defun fsharp-ac--log (str)
   (when fsharp-ac-debug
     (unless (get-buffer fsharp-ac--log-buf)
@@ -469,6 +485,16 @@ prevent usage errors being displayed by FSHARP-DOC-MODE."
                                 (line-number-at-pos)
                                 (+ 1 (current-column)))))
 
+(defun fsharp-ac/method-at-point ()
+  "Find the method signatures of the symbol at point."
+  (interactive)
+  (when (fsharp-ac-can-make-request)
+    (fsharp-ac-parse-current-buffer)
+    (fsharp-ac-send-pos-request "methods"
+                                (fsharp-ac--buffer-truename)
+                                (line-number-at-pos)
+                                (+ 1 (current-column)))))
+
 (defun fsharp-ac/gotodefn-at-point ()
   "Find the point of declaration of the symbol at point and goto it."
   (interactive)
@@ -510,6 +536,11 @@ prevent usage errors being displayed by FSHARP-DOC-MODE."
   (when (eq (char-before) ?.)
     (ac-stop))
   (delete-char -1))
+
+(defun fsharp-ac/electric-paren ()
+  (interactive)
+  (self-insert-command 1))
+
 
 (define-key ac-completing-map
   (kbd "<backspace>") 'fsharp-ac/electric-backspace)
@@ -741,6 +772,7 @@ around to the start of the buffer."
          ((s-equals? "tooltip" kind) (fsharp-ac-handle-tooltip data))
          ((s-equals? "finddecl" kind) (fsharp-ac-visit-definition data))
          ((s-equals? "symboluse" kind) (fsharp-ac--handle-symboluse data))
+         ((s-equals? "method" kind) (fsharp-ac--handle-method data))
        (t
         (fsharp-ac-message-safely "Error: unrecognised message kind: '%s'" kind))))
 
@@ -805,6 +837,25 @@ around to the start of the buffer."
     (let ((uses (fsharp-ac--parse-symbol-uses (gethash "Uses" data))))
       (when (> (length uses) 1)
         (mapc 'fsharp-ac/show-symbol-use-overlay uses)))))
+
+;; (defface tooltip-bold
+;;   '((t
+;;      :weight bold
+;;      :inherit tooltip))
+;;   "Face for emphasised part of the tooltip.")
+
+;; (defun boldify (i s)
+;;   (let* ((params (s-split "[,\(\)]" s))
+;;          (before (-take i params))
+;;          (itself (nth i params))
+;;          (after (-drop (+ i 1) params)))
+;;     (s-concat before) (s-m)
+;;     ))
+
+(defun fsharp-ac--handle-method (data)
+  (when (eq major-mode 'fsharp-mode)
+    (fsharp-ac/show-popup
+     (s-join "\n" (--map (gethash "Tip" it) (gethash "Overloads" data))))))
 
 (defun fsharp-ac-handle-tooltip (data)
   "Display information from the background process. If the user

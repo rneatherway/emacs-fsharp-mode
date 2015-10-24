@@ -86,6 +86,7 @@
   (define-key fsharp-mode-map [delete]    'fsharp-electric-delete)
   (define-key fsharp-mode-map [backspace] 'fsharp-electric-backspace)
   (define-key fsharp-mode-map (kbd ".") 'fsharp-ac/electric-dot)
+  (define-key fsharp-mode-map (kbd "(") 'fsharp-ac/electric-paren)
 
   (define-key fsharp-mode-map (kbd "C-c <up>") 'fsharp-goto-block-up)
 
@@ -97,6 +98,7 @@
   (define-key fsharp-mode-map (kbd "M-,")     'fsharp-ac/pop-gotodefn-stack)
   (define-key fsharp-mode-map (kbd "C-c C-q") 'fsharp-ac/stop-process)
   (define-key fsharp-mode-map (kbd "C-c C-.") 'fsharp-ac/complete-at-point)
+  (define-key fsharp-mode-map (kbd "C-c C-,") 'fsharp-ac/method-at-point)
   (define-key fsharp-mode-map (kbd "C-c C-u") 'fsharp-ac/symboluse-at-point)
 
   (unless running-xemacs
