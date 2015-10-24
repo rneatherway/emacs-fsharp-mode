@@ -812,25 +812,6 @@ around to the start of the buffer."
         (setq fsharp-ac-errors errs)
         (mapc 'fsharp-ac/show-error-overlay errs)))))
 
-(defun fsharp-ac--format-tooltip-overload (overload)
-  "Format a single overload"
-  (let ((sig (gethash "Signature" overload))
-        (cmt (gethash "Comment" overload)))
-    (s-concat sig "\n" cmt (if (s-blank? cmt) "" "\n"))))
-
-(defun fsharp-ac--format-tooltip-overloads (single? overloads)
-  "Format a list of overloads"
-  (let ((header (if (and single? (> (length overloads) 1)) "Multiple overloads\n" ""))
-        (body (s-join "\n" (-map #'fsharp-ac--format-tooltip-overload (-take 10 overloads))))
-        (footer (if (> (length overloads) 10) (format "(+%d other overloads)" (length overloads)) "")))
-    (s-concat header body footer)))
-
-(defun fsharp-ac--format-tooltip (items)
-  "Format a list of items as a tooltip"
-  (let ((result (s-join "\n--------------------\n"
-                           (-map (lambda (i) (fsharp-ac--format-tooltip-overloads (< (length items) 2) i)) items))))
-      (s-chomp result)))
-
 (defun fsharp-ac--handle-symboluse (data)
   (when (eq major-mode 'fsharp-mode)
     (fsharp-ac--clear-symbol-uses)
@@ -856,6 +837,25 @@ around to the start of the buffer."
   (when (eq major-mode 'fsharp-mode)
     (fsharp-ac/show-popup
      (s-join "\n" (--map (gethash "Tip" it) (gethash "Overloads" data))))))
+
+(defun fsharp-ac--format-tooltip-overload (overload)
+  "Format a single overload"
+  (let ((sig (gethash "Signature" overload))
+        (cmt (gethash "Comment" overload)))
+    (s-concat sig "\n" cmt (if (s-blank? cmt) "" "\n"))))
+
+(defun fsharp-ac--format-tooltip-overloads (single? overloads)
+  "Format a list of overloads"
+  (let ((header (if (and single? (> (length overloads) 1)) "Multiple overloads\n" ""))
+        (body (s-join "\n" (-map #'fsharp-ac--format-tooltip-overload (-take 10 overloads))))
+        (footer (if (> (length overloads) 10) (format "(+%d other overloads)" (length overloads)) "")))
+    (s-concat header body footer)))
+
+(defun fsharp-ac--format-tooltip (items)
+  "Format a list of items as a tooltip"
+  (let ((result (s-join "\n--------------------\n"
+                           (-map (lambda (i) (fsharp-ac--format-tooltip-overloads (< (length items) 2) i)) items))))
+      (s-chomp result)))
 
 (defun fsharp-ac-handle-tooltip (data)
   "Display information from the background process. If the user
