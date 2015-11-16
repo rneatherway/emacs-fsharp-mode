@@ -700,20 +700,22 @@ around to the start of the buffer."
 
            ((>= fsharp-ac-debug 2)
             (fsharp-ac--log (format "%s\n" (buffer-substring (point-min) eofloc))))))
-
-        (let ((json-array-type 'list)
-              (json-object-type 'hash-table)
-              (json-key-type 'string))
-          (condition-case nil
-              (progn
-                (goto-char (point-min))
-                (let ((msg (json-read)))
-                  (delete-region (point-min) (+ (point) 1))
-                  msg))
-            (error
-             (fsharp-ac--log (format "Malformed JSON: %s" (buffer-substring-no-properties (point-min) (point-max))))
-             (message "Error: F# completion process produced malformed JSON (%s)."
-                      (buffer-substring-no-properties (point-min) (point-max))))))))))
+        (if (char-equal (char-after (point-min)) ?\{)
+            (let ((json-array-type 'list)
+                  (json-object-type 'hash-table)
+                  (json-key-type 'string))
+              (condition-case nil
+                  (progn
+                    (goto-char (point-min))
+                    (let ((msg (json-read)))
+                      (delete-region (point-min) (+ (point) 1))
+                      msg))
+                (error
+                 (fsharp-ac--log (format "Malformed JSON: %s" (buffer-substring-no-properties (point-min) (point-max))))
+                 (message "Error: F# completion process produced malformed JSON (%s)."
+                          (buffer-substring-no-properties (point-min) (point-max))))))
+          (message "Dropping '%s'" (buffer-substring-no-properties (point-min) (point)))
+          (delete-region (point-min) (+ (point) 1)))))))
 
 (defun fsharp-ac-filter-output (proc str)
   "Filter STR from the completion process PROC and handle appropriately."
